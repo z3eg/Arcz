@@ -15,6 +15,8 @@ public class Racket {
     public int y;
     private double speed;
     private Image image;
+    public boolean automaticMode;
+    public boolean mouseFollowingMode;
 
     public int getWidth() {
         return width;
@@ -65,12 +67,31 @@ public class Racket {
         this.x = x;
         this.y = y;
         this.speed = speed;
+        this.automaticMode = false;
+        this.mouseFollowingMode = false;
         this.image = image;
     }
 
     public void draw(Graphics g, int x, int y)
     {
-        g.drawImage(image,x,y,width,height,null);
+        g.drawImage(image,x,y,this.width,this.height,null);
+    }
 
+    public void followTheBall(Ball ball, int tableWidth)
+    {
+        mouseFollowingMode = false;
+        //if (this.x >= 0 && (this.x+this.width) < tableWidth)
+            this.x = ball.getX() + ball.getR() - this.width/2;
+    }
+
+    public void followTheMouse(Ball ball, int tableWidth)
+    {
+        automaticMode = false;
+        PointerInfo PI = MouseInfo.getPointerInfo();
+        Point pos = PI.getLocation();
+        int mouseX = (int) pos.getX();
+        //System.out.println("Mouse: " + pos.getX() + ", " + pos.getY());
+        if (mouseX >= 0 && mouseX < tableWidth)
+        this.x = mouseX - this.width/2;
     }
 }

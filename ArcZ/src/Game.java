@@ -2,6 +2,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferStrategy;
 
 /**
@@ -14,15 +16,15 @@ public class Game extends Canvas implements Runnable {
     public static int HEIGHT = 640;
     public static int X_CENTER = WIDTH/2;
     public static int Y_CENTER = HEIGHT/2;
-    public static int BOTTOM_BORDER = HEIGHT-HEIGHT/40;
-    public static int TOP_BORDER = HEIGHT/40;
+    public static int BOTTOM_BORDER = HEIGHT-HEIGHT/30;
+    public static int TOP_BORDER = HEIGHT/30;
     public static String NAME = "ArcZ";
-    private boolean running;
+    private boolean running = true;
     private boolean leftPressed = false;
     private boolean rightPressed = false;
     private boolean aPressed = false;
     private boolean dPressed = false;
-
+    //public boolean paused = false;
    /* private static int ballX = 50;
     private static int ballY = 50;*/
 
@@ -33,6 +35,23 @@ public class Game extends Canvas implements Runnable {
 
     public int[] goalsScored = {0,0};
     //public int secondScored;
+
+    private class MouseInputHandler extends MouseAdapter
+    {
+        public void mousePressed(MouseEvent e)
+        {
+            if (e.getButton() == MouseEvent.BUTTON1)
+            {
+                Player1.automaticMode = false;
+                Player1.mouseFollowingMode = !Player1.mouseFollowingMode;
+            }
+            if (e.getButton() == MouseEvent.BUTTON3)
+            {
+                Player2.automaticMode = false;
+                Player2.mouseFollowingMode = !Player2.mouseFollowingMode;
+            }
+        }
+    }
 
     private class KeyInputHandler extends KeyAdapter{
 
@@ -52,9 +71,16 @@ public class Game extends Canvas implements Runnable {
             //logging
             if (e.getKeyCode() == KeyEvent.VK_L) {
                 System.out.println("Ball: " + ball.getX() + ", " + ball.getY());
-                System.out.println("Player1: " + Player1.x + ", " +Player1.y);
+                System.out.println("Player1: " + Player1.x + ", " +Player1.y + ", right side: " + (Player1.x+Player1.getWidth()));
                 System.out.println("Player2: " + Player2.x + ", " +Player2.y);
+                //mouse position
+                PointerInfo PI = MouseInfo.getPointerInfo();
+                Point pos = PI.getLocation();
+                System.out.println("Mouse: " + pos.getX() + ", " + pos.getY());
             }
+            /*if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                running=!running;
+            }*/
         }
         public void keyReleased(KeyEvent e) { //клавиша отпущена
             if (e.getKeyCode() == KeyEvent.VK_LEFT) {
@@ -69,6 +95,17 @@ public class Game extends Canvas implements Runnable {
             if (e.getKeyCode() == KeyEvent.VK_D) {
                 dPressed = false;
             }
+            if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                running=!running;
+            }
+            if (e.getKeyCode() == KeyEvent.VK_B)
+            {
+                Player1.automaticMode = !Player1.automaticMode;
+            }
+            if (e.getKeyCode() == KeyEvent.VK_T)
+            {
+                Player2.automaticMode = !Player2.automaticMode;
+            }
         }
 
     }
@@ -79,23 +116,26 @@ public class Game extends Canvas implements Runnable {
         long delta;
 
         init();
+        while (true) {
+            if (running) {
+                delta = System.currentTimeMillis() - lastTime;
+                lastTime = System.currentTimeMillis();
+                update(delta);
+                render();
+            }
 
-        while (running)  {
-            delta = System.currentTimeMillis() - lastTime;
-            lastTime = System.currentTimeMillis();
-            update(delta);
-            render();
         }
     }
 
     public void start()
     {
-        running = true;
+        //running = true;
         new Thread(this).start();
     }
 
     public void init()  {
         addKeyListener(new KeyInputHandler());
+        addMouseListener(new MouseInputHandler());
         goalsScored[0]=0;
         goalsScored[1]=0;
     }
@@ -113,32 +153,52 @@ public class Game extends Canvas implements Runnable {
         g.setFont(gameFont);
         g.fillRect(0,0, getWidth(), getHeight());
 
-        ball.draw(g, ball.getX(), ball.getY());
-        Player1.draw(g,Player1.x,Player1.y);
-        Player2.draw(g,Player2.x,Player2.y);
+
         g.setColor(Color.black);
+        g.drawLine(WIDTH, 0, WIDTH, HEIGHT);
+        g.drawLine(0, HEIGHT, WIDTH, HEIGHT);
+
         g.drawString("TOP:", X_CENTER - 130, Y_CENTER - 30);
         g.drawString("BOTTOM:", X_CENTER - 10, Y_CENTER - 30);
         g.drawString(Integer.toString(goalsScored[1]), X_CENTER - 110, Y_CENTER + 30);
         g.drawString(Integer.toString(goalsScored[0]), X_CENTER + 40, Y_CENTER + 30);
+        ball.draw(g, ball.getX(), ball.getY());
+        Player1.draw(g,Player1.x,Player1.y);
+        Player2.draw(g,Player2.x,Player2.y);
         g.dispose();
         bs.show();
     }
 
     public void update(long delta)    {
+        if (Player1.automaticMode)
+        {
+            Player1.followTheBall(ball,WIDTH);
+        }
+        else if (Player1.mouseFollowingMode)
+        {
+            Player1.followTheMouse(ball,WIDTH);
+        }
+        if (Player2.automaticMode)
+        {
+            Player2.followTheBall(ball,WIDTH);
+        }
+        else if (Player2.mouseFollowingMode)
+        {
+            Player2.followTheMouse(ball,WIDTH);
+        }
         if (leftPressed == true && Player1.x>0) {
             Player1.x--;
         }
-        if (rightPressed == true && (Player1.x + Player1.getWidth()*0.75)<WIDTH) {
+        if (rightPressed == true && (Player1.x + Player1.getWidth())<WIDTH) {
             Player1.x++;
         }
         if (aPressed == true && Player2.x>0) {
             Player2.x--;
         }
-        if (dPressed == true && (Player2.x + Player2.getWidth()*0.75)<WIDTH) {
+        if (dPressed == true && (Player2.x + Player2.getWidth())<WIDTH) {
             Player2.x++;
         }
-        if (ball.getX() >= WIDTH )
+        if ((ball.getX()+ball.getD()) >= WIDTH )
             ball.moveRight = false;
         if (ball.getX() <= 0)
             ball.moveRight = true;
@@ -146,9 +206,9 @@ public class Game extends Canvas implements Runnable {
         {
             scoreGoal(2);
         }
-        if (ball.getY() <= 0)
+        if ((ball.getY()+ball.getD()) <= 0)
             scoreGoal(1);
-        if ((ball.getX()+ball.getR())  > Player1.x && (ball.getX()+ball.getR()) < (Player1.x+Player1.getWidth()) && (ball.getY()+ball.getD()) == Player1.y)
+        if ((ball.getX()+ball.getR())  > Player1.x && (ball.getX()+ball.getR()) < (Player1.x+Player1.getWidth()) && (ball.getY()+ball.getD()) >= Player1.y && (ball.getY()+ball.getD()) < Player1.y+Player1.getHeight())
             ball.moveUp = true;
         if ((ball.getX()+ball.getR())  > Player2.x && (ball.getX()+ball.getR())  < (Player2.x+Player2.getWidth()) && ball.getY() == (Player2.y+Player2.getHeight()))
             ball.moveUp = false;
@@ -170,7 +230,6 @@ public class Game extends Canvas implements Runnable {
     public static void main(String[] args) {
         Game game = new Game();
         game.setPreferredSize(new Dimension(WIDTH,HEIGHT));
-
         JFrame frame = new JFrame(Game.NAME);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
@@ -178,7 +237,7 @@ public class Game extends Canvas implements Runnable {
         frame.pack();
         frame.setResizable(false);
         frame.setVisible(true);
-
         game.start();
     }
+
 }
